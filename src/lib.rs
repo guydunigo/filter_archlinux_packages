@@ -15,7 +15,7 @@ use package::Package;
 
 const DEBUG_VERSIONS_COMPARISON: bool = false;
 
-const _TEST_NAME: &str = "/mnt/arch/linux-5.3.1.arch1-1-x86_64.pkg.tar.xz";
+const _TEST_NAME: &str = "/mnt/archlinux/linux-5.3.arch1-1-x86_64.pkg.tar.xz";
 const _TEST_NAME_2: &str = "/mnt/archlinux/linux-5.3.1.arch1-1-x86_64.pkg.tar.xz";
 const _TEST_NAME_3: &str = "/mnt/archlinux/zeitgeist-1.0+1+g1bcc8585-1-x86_64.pkg.tar.xz";
 
@@ -41,9 +41,7 @@ fn list_old_archlinux_packages<P: AsRef<Path>>(
 
     for entry in read_dir(containing_dir_path)? {
         let entry_path = entry?.path();
-        if !entry_path.is_file() {
-            continue;
-        } else if ignored_files.contains(&entry_path) {
+        if !entry_path.is_file() || ignored_files.contains(&entry_path) {
             continue;
         }
 
@@ -92,7 +90,7 @@ fn list_old_archlinux_packages<P: AsRef<Path>>(
     Ok((old_pkgs, ignored_files))
 }
 
-fn list_ignored_files(ignored_files: &Vec<PathBuf>) {
+fn list_ignored_files(ignored_files: &[PathBuf]) {
     println!("{} files ignored...", ignored_files.len());
     ignored_files
         .iter()
