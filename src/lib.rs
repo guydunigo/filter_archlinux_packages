@@ -105,7 +105,7 @@ fn remove_files<P: AsRef<Path>>(files: Vec<P>) -> io::Result<()> {
             "... removing `{}`",
             file.as_ref().file_name().unwrap().to_str().unwrap()
         );
-        //remove_file(file)?;
+        remove_file(file)?;
     }
     Ok(())
 }

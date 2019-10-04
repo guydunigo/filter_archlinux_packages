@@ -1,11 +1,11 @@
-extern crate filter_archlinux_packages;
+extern crate remove_old_arch_pkgs;
 
 use std::env::args;
 use std::env::current_dir;
 use std::path::PathBuf;
 use std::process::exit;
 
-use filter_archlinux_packages::remove_old_archlinux_packages;
+use remove_old_arch_pkgs::remove_old_archlinux_packages;
 
 fn main() {
     let dir = if let Some(dir) = args().nth(1) {

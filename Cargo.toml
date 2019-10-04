@@ -1,5 +1,5 @@
 [package]
-name = "remove_old_pkgs"
+name = "remove_old_arch_pkgs"
 version = "0.1.0"
 authors = ["GONI Guillaume <gdn3@live.fr>"]
 edition = "2018"
