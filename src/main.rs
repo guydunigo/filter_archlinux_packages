@@ -16,7 +16,8 @@ fn main() {
     };
 
     if dir.is_dir() {
-        let res = remove_old_archlinux_packages(dir);
+        let res = remove_old_archlinux_packages(&dir);
+
         if let Err(err) = res {
             eprintln!("{}", err);
             exit(2);

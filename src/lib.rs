@@ -19,8 +19,8 @@ const _TEST_NAME: &str = "/mnt/archlinux/linux-5.3.arch1-1-x86_64.pkg.tar.xz";
 const _TEST_NAME_2: &str = "/mnt/archlinux/linux-5.3.1.arch1-1-x86_64.pkg.tar.xz";
 const _TEST_NAME_3: &str = "/mnt/archlinux/zeitgeist-1.0+1+g1bcc8585-1-x86_64.pkg.tar.xz";
 
-pub fn remove_old_archlinux_packages<P: AsRef<Path>>(containing_dir_path: P) -> io::Result<()> {
-    let (old_pkgs, ignored_files) = list_old_archlinux_packages(&containing_dir_path)?;
+pub fn remove_old_archlinux_packages<P: AsRef<Path>>(containing_dir_path: &P) -> io::Result<()> {
+    let (old_pkgs, ignored_files) = list_old_archlinux_packages(containing_dir_path)?;
     remove_files(old_pkgs)?;
     list_ignored_files(&ignored_files);
     Ok(())
