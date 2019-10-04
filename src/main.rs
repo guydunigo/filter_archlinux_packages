@@ -5,10 +5,10 @@ use std::env::current_dir;
 use std::path::PathBuf;
 use std::process::exit;
 
-use filter_archlinux_packages::list_old_archlinux_packages;
+use filter_archlinux_packages::remove_old_archlinux_packages;
 
 fn main() {
-    let dir = if let Some(dir) = args().skip(1).next() {
+    let dir = if let Some(dir) = args().nth(1) {
         PathBuf::from(&dir)
     } else {
         eprintln!("No folder was provided, using current working directory...");
@@ -16,7 +16,11 @@ fn main() {
     };
 
     if dir.is_dir() {
-        list_old_archlinux_packages(dir).unwrap();
+        let res = remove_old_archlinux_packages(dir);
+        if let Err(err) = res {
+            eprintln!("{}", err);
+            exit(2);
+        }
     } else {
         eprintln!(
             "Error: provided argument `{}` is not a directory.",
