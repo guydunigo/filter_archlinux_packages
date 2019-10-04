@@ -21,11 +21,11 @@ pub struct Package {
 }
 
 impl Package {
-    pub fn from_path(path: PathBuf) -> Result<Self, PackageParseError> {
+    pub fn from_path(path: PathBuf) -> Result<Self, (PackageParseError, PathBuf)> {
         let file_name = if let Some(file_name) = path.file_name() {
             file_name.to_str().unwrap()
         } else {
-            return Err(PackageParseError::EmptyPathOrRoot);
+            return Err((PackageParseError::EmptyPathOrRoot, path));
         };
 
         lazy_static! {
@@ -36,7 +36,7 @@ impl Package {
         let captures = if let Some(captures) = RE.captures(file_name) {
             captures
         } else {
-            return Err(PackageParseError::NoPackageName);
+            return Err((PackageParseError::NoPackageName, path));
         };
 
         // Needs to do this jump to get direct access to &str
@@ -50,7 +50,7 @@ impl Package {
         match VersionCompare::compare(&a.pkgver, &b.pkgver).unwrap_or(CompOp::Ne) {
             CompOp::Eq => {
                 eprintln!(
-                    "Warning: package `{}` : versions `{}` and `{}` seems to be the same.",
+                    "WWW package `{}` : versions `{}` and `{}` seems to be the same.",
                     a.name, a.pkgver, b.pkgver
                 );
                 Ordering::Equal
@@ -58,7 +58,7 @@ impl Package {
             CompOp::Ge | CompOp::Gt => Ordering::Greater,
             CompOp::Le | CompOp::Lt => Ordering::Less,
             CompOp::Ne => {
-                eprintln!("Warning: package `{}` : versions `{}` and `{}` seems to be different, but we can't compare them.",
+                eprintln!("WWW package `{}` : versions `{}` and `{}` seems to be different, but we can't compare them.",
                     a.name,
                     a.pkgver,
                     b.pkgver
