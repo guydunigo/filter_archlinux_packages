@@ -1,4 +1,4 @@
-# filter_archlinux_packages
+# Remove old Archlinux packages
 
 ## Description
 
