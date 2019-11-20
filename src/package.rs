@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use regex::Regex;
 use version_compare::{CompOp, VersionCompare};
 
-const PARSE_PKG_NAME_REGEX: &str = r"(.*)-([^-]+-[^-]+)-[^-]+.pkg.tar.xz";
+const PARSE_PKG_NAME_REGEX: &str = r"(.*)-([^-]+-[^-]+)-[^-]+.pkg.tar.*";
 
 #[derive(Debug)]
 pub enum PackageParseError {
