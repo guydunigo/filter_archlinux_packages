@@ -38,10 +38,16 @@ fn list_old_archlinux_packages<P: AsRef<Path>>(
     let mut old_pkgs = Vec::new();
     let mut new_pkgs: HashMap<String, Package> = HashMap::new();
     let mut ignored_files = Vec::new();
+    let mut sig_files = Vec::new();
 
     for entry in read_dir(containing_dir_path)? {
         let entry_path = entry?.path();
         if !entry_path.is_file() || ignored_files.contains(&entry_path) {
+            continue;
+        }
+
+        if entry_path.extension().map_or(false, |s| s == "sig") {
+            sig_files.push(entry_path);
             continue;
         }
 
@@ -60,7 +66,7 @@ fn list_old_archlinux_packages<P: AsRef<Path>>(
                 continue;
             }
 
-            match Package::compare_versions(&pkg, &existing_pkg) {
+            match Package::compare_versions(&pkg, existing_pkg) {
                 Ordering::Greater => {
                     if DEBUG_VERSIONS_COMPARISON {
                         eprintln!(
@@ -86,6 +92,25 @@ fn list_old_archlinux_packages<P: AsRef<Path>>(
             new_pkgs.insert(pkg.name.clone(), pkg);
         }
     }
+
+    // If a sig file corresponds to an old package, we remove it as well, and if it doesn't
+    // correpsond to a package to keep, we ignore it.
+    for sig_path in sig_files.drain(..) {
+        if old_pkgs.iter().any(|p| p.eq(&sig_path.with_extension(""))) {
+            old_pkgs.push(sig_path);
+        } else if !new_pkgs
+            .values()
+            .map(|p| &p.path)
+            .any(|p| p.eq(&sig_path.with_extension("")))
+        {
+            ignored_files.push(sig_path);
+        }
+    }
+
+    // Ideally I might not sort them here as it is purely aesthetical, but for such a simple prog,
+    // it's okay.
+    old_pkgs.sort();
+    ignored_files.sort();
 
     Ok((old_pkgs, ignored_files))
 }
