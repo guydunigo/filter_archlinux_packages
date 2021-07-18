@@ -1,5 +1,7 @@
 use std::cmp::Ordering;
 use std::fmt::Debug;
+use std::iter::{once, Iterator};
+use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 
 use regex::Regex;
@@ -49,10 +51,13 @@ impl Package {
     pub fn compare_versions(a: &Package, b: &Package) -> Ordering {
         match VersionCompare::compare(&a.pkgver, &b.pkgver).unwrap_or(CompOp::Ne) {
             CompOp::Eq => {
+                // TODO: log_lvl
+                /*
                 eprintln!(
                     "WWW package `{}` : versions `{}` and `{}` seems to be the same.",
                     a.name, a.pkgver, b.pkgver
                 );
+                */
                 Ordering::Equal
             }
             CompOp::Ge | CompOp::Gt => Ordering::Greater,
@@ -76,4 +81,57 @@ impl Package {
         }
     }
     */
+}
+
+/// Contains a package and its possible ambiguities, the first one having the priority over the
+/// rest.
+/// If two of the rest can be compared, it's not taken into account.
+///
+/// We use a value and an array for it to be easier to handle and might save some memory as most
+/// packages won't even fill the vec.
+pub struct Packages(Package, Vec<Package>);
+
+impl Packages {
+    pub fn new(p: Package) -> Self {
+        Packages(p, Vec::with_capacity(0))
+    }
+
+    pub fn get_name(&self) -> &str {
+        &self.0.name[..]
+    }
+
+    pub fn has_ambs(&self) -> bool {
+        !self.1.is_empty()
+    }
+
+    pub fn add_ambiguity(&mut self, p: Package) {
+        self.1.push(p);
+    }
+
+    pub fn into_iter(self) -> impl Iterator<Item = Package> {
+        let Packages(p, pkgs) = self;
+        once(p).chain(pkgs.into_iter())
+    }
+
+    /*
+    pub fn into_vec(self) -> Vec<Package> {
+        let Packages(p, mut pkgs) = self;
+        pkgs.push(p);
+        pkgs
+    }
+    */
+}
+
+impl Deref for Packages {
+    type Target = Package;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Packages {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
 }
