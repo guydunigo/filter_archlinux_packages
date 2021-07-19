@@ -2,11 +2,12 @@ extern crate regex;
 extern crate version_compare;
 #[macro_use]
 extern crate lazy_static;
+extern crate chrono;
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::fs::read_dir;
 use std::fs::remove_file;
+use std::fs::{metadata, read_dir};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -160,10 +161,11 @@ fn list_old_archlinux_packages(opts: &Options) -> io::Result<(Vec<PathBuf>, Vec<
             println!("package `{}` has {} ambiguities :", name, ambs.len());
             // We get the "biggest" string on top.
             ambs.sort_by(|a, b| b.pkgver.cmp(&a.pkgver));
-            ambs.iter()
-                .enumerate()
-                .rev()
-                .for_each(|(i, p)| println!("{:2}.\t{}", i, p.pkgver));
+            ambs.iter().enumerate().rev().for_each(|(i, p)| {
+                let date: chrono::DateTime<chrono::Local> =
+                    chrono::DateTime::from(metadata(&p.path).unwrap().created().unwrap());
+                println!("{:2}.\t{}\t(created {})", i, p.pkgver, date.to_rfc2822())
+            });
 
             let number_opt = if !opts.auto_confirm_level.is_at_least_ambiguities() {
                 // TODO: also the possibility to select all 0
@@ -270,7 +272,7 @@ fn remove_files<P: AsRef<Path>>(files: Vec<P>) -> io::Result<()> {
     println!("Actually removing {} files...\n", files.len());
     for file in files.iter() {
         println!("{}", file.as_ref().file_name().unwrap().to_str().unwrap());
-        // remove_file(file)?;
+        remove_file(file)?;
     }
     Ok(())
 }

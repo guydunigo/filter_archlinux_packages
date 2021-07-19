@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use regex::Regex;
 use version_compare::{CompOp, VersionCompare};
 
+// TODO: do this manually and remove regexes completely
 const PARSE_PKG_NAME_REGEX: &str = r"(.*)-([^-]+-[^-]+)-[^-]+.pkg.tar.*";
 
 #[derive(Debug)]
