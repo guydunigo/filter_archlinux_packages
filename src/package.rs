@@ -31,22 +31,10 @@ impl Package {
             return Err((PackageParseError::EmptyPathOrRoot, path));
         };
 
-        lazy_static! {
-            static ref RE: Regex =
-                Regex::new(PARSE_PKG_NAME_REGEX).expect("Bad PARSE_PKG_NAME_REGEX");
+        match extract_name_version(file_name) {
+            Ok((name, pkgver)) => Ok(Package { name, path, pkgver }),
+            Err((e, _)) => Err((e, path)),
         }
-
-        let captures = if let Some(captures) = RE.captures(file_name) {
-            captures
-        } else {
-            return Err((PackageParseError::NoPackageName, path));
-        };
-
-        // Needs to do this jump to get direct access to &str
-        let name = captures.get(1).unwrap().as_str().to_string();
-        let pkgver = captures.get(2).unwrap().as_str().to_string();
-
-        Ok(Package { name, path, pkgver })
     }
 
     pub fn compare_versions(a: &Package, b: &Package) -> Ordering {
@@ -135,4 +123,23 @@ impl DerefMut for Packages {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
+}
+
+fn extract_name_version(file_name: &str) -> Result<(String, String), (PackageParseError, String)> {
+    // filename.spli
+    lazy_static! {
+        static ref RE: Regex = Regex::new(PARSE_PKG_NAME_REGEX).expect("Bad PARSE_PKG_NAME_REGEX");
+    }
+
+    let captures = if let Some(captures) = RE.captures(file_name) {
+        captures
+    } else {
+        return Err((PackageParseError::NoPackageName, file_name.to_string()));
+    };
+
+    // Needs to do this jump to get direct access to &str
+    let name = captures.get(1).unwrap().as_str().to_string();
+    let pkgver = captures.get(2).unwrap().as_str().to_string();
+
+    Ok((name, pkgver))
 }
