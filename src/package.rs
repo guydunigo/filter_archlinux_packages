@@ -4,11 +4,9 @@ use std::iter::{once, Iterator};
 use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 
+#[cfg(feature = "regex")]
 use regex::Regex;
 use version_compare::{CompOp, VersionCompare};
-
-// TODO: do this manually and remove regexes completely
-const PARSE_PKG_NAME_REGEX: &str = r"(.*)-([^-]+-[^-]+)-[^-]+.pkg.tar.*";
 
 #[derive(Debug)]
 pub enum PackageParseError {
@@ -125,8 +123,12 @@ impl DerefMut for Packages {
     }
 }
 
+#[cfg(feature = "regex")]
+const PARSE_PKG_NAME_REGEX: &str = r"(.*)-([^-]+-[^-]+)-[^-]+.pkg.tar.*";
+
+#[cfg(feature = "regex")]
 fn extract_name_version(file_name: &str) -> Result<(String, String), (PackageParseError, String)> {
-    // filename.spli
+    // filename.split
     lazy_static! {
         static ref RE: Regex = Regex::new(PARSE_PKG_NAME_REGEX).expect("Bad PARSE_PKG_NAME_REGEX");
     }
@@ -142,4 +144,10 @@ fn extract_name_version(file_name: &str) -> Result<(String, String), (PackagePar
     let pkgver = captures.get(2).unwrap().as_str().to_string();
 
     Ok((name, pkgver))
+}
+
+#[cfg(not(feature = "regex"))]
+fn extract_name_version(file_name: &str) -> Result<(String, String), (PackageParseError, String)> {
+    // filename.split
+    Ok(("a".to_string(), "b".to_string()))
 }
