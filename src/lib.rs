@@ -81,24 +81,28 @@ pub fn remove_old_archlinux_packages(opts: Options) -> io::Result<()> {
 fn list_old_archlinux_packages(opts: &Options) -> io::Result<(Vec<PathBuf>, Vec<PathBuf>)> {
     // TODO: assert dir.is_dir(), already done in read_dir ?
     let mut old_pkgs = Vec::new();
-    let mut new_pkgs: HashMap<String, Packages> = HashMap::new();
+    let mut new_pkgs: HashMap<&str, Packages> = HashMap::new();
     let mut ignored_files = Vec::new();
     let mut sig_files = Vec::new();
 
-    // TODO: extract the function(s)
-    // for entry in read_dir(&opts.dir)? {
+    let mut entry_paths = Vec::new();
     for entry in read_dir(&opts.dir)? {
         let entry_path = entry?.path();
         if !entry_path.is_file() || ignored_files.contains(&entry_path) {
             continue;
         }
+        entry_paths.push(entry_path);
+    }
 
+    // TODO: extract the function(s)
+    // for entry in read_dir(&opts.dir)? {
+    for entry_path in entry_paths.iter() {
         if entry_path.extension().map_or(false, |s| s == "sig") {
             sig_files.push(entry_path);
             continue;
         }
 
-        let pkg = match Package::from_path(entry_path) {
+        let pkg = match Package::from_path(&entry_path) {
             Ok(pkg) => pkg,
             Err((_, entry_path)) => {
                 ignored_files.push(entry_path);
@@ -122,13 +126,11 @@ fn list_old_archlinux_packages(opts: &Options) -> io::Result<(Vec<PathBuf>, Vec<
 
                     // TODO: ideally add them back to this loop as long as there are any for better
                     // handling
-                    let existing_pkg = new_pkgs
-                        .insert(pkg.name.clone(), Packages::new(pkg))
-                        .unwrap();
+                    let existing_pkg = new_pkgs.insert(pkg.name, Packages::new(pkg)).unwrap();
                     let pkg = new_pkgs.get_mut(&existing_pkg.name).unwrap();
                     for p in existing_pkg.into_iter() {
                         match Package::compare_versions(&p, pkg) {
-                            Ordering::Less => old_pkgs.push(p.path),
+                            Ordering::Less => old_pkgs.push(p.path.clone()),
                             Ordering::Greater => {
                                 eprintln!("WWW Ambiguous package from older version is seen with greater version than the newer one has.");
                                 pkg.add_ambiguity(p);
@@ -144,12 +146,12 @@ fn list_old_archlinux_packages(opts: &Options) -> io::Result<(Vec<PathBuf>, Vec<
                             existing_pkg.pkgver, pkg.pkgver
                         );
                     }
-                    old_pkgs.push(pkg.path);
+                    old_pkgs.push(pkg.path.clone());
                 }
                 Ordering::Equal => existing_pkg.add_ambiguity(pkg),
             }
         } else {
-            new_pkgs.insert(pkg.name.clone(), Packages::new(pkg));
+            new_pkgs.insert(pkg.name, Packages::new(pkg));
         }
     }
 
@@ -165,7 +167,7 @@ fn list_old_archlinux_packages(opts: &Options) -> io::Result<(Vec<PathBuf>, Vec<
             // index 0 should always exist
             println!("package `{}` has {} ambiguities :", name, ambs.len());
             // We get the "biggest" string on top.
-            ambs.sort_by(|a, b| b.pkgver.cmp(&a.pkgver));
+            ambs.sort_by(|a, b| b.pkgverstr.cmp(&a.pkgverstr));
             ambs.iter().enumerate().rev().for_each(|(i, p)| {
                 #[cfg(feature = "chrono")]
                 {
@@ -228,11 +230,12 @@ fn list_old_archlinux_packages(opts: &Options) -> io::Result<(Vec<PathBuf>, Vec<
                     if i == number {
                         single_new_pkgs.push(p)
                     } else {
-                        old_pkgs.push(p.path)
+                        old_pkgs.push(p.path.clone())
                     }
                 });
             } else {
-                ignored_files.extend(ambs.drain(..).map(|p| p.path));
+                // TODO clone ?
+                ignored_files.extend(ambs.drain(..).map(|p| p.path.clone()));
             }
         }
     }
@@ -241,13 +244,13 @@ fn list_old_archlinux_packages(opts: &Options) -> io::Result<(Vec<PathBuf>, Vec<
     // correpsond to a package to keep, we ignore it.
     for sig_path in sig_files.drain(..) {
         if old_pkgs.iter().any(|p| p.eq(&sig_path.with_extension(""))) {
-            old_pkgs.push(sig_path);
+            old_pkgs.push(sig_path.clone());
         } else if !single_new_pkgs
             .iter()
             .map(|p| &p.path)
-            .any(|p| p.eq(&sig_path.with_extension("")))
+            .any(|p| (*p).eq(&sig_path.with_extension("")))
         {
-            ignored_files.push(sig_path);
+            ignored_files.push(sig_path.clone());
         }
     }
 

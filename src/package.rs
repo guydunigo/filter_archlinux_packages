@@ -6,38 +6,46 @@ use std::path::PathBuf;
 
 #[cfg(feature = "regex")]
 use regex::Regex;
-use version_compare::{CompOp, VersionCompare};
+use version_compare::{Cmp, Version};
 
 #[derive(Debug)]
 pub enum PackageParseError {
     NoPackageName,
     EmptyPathOrRoot,
+    CouldntParsePkgver(String),
 }
 
 #[derive(Debug)]
-pub struct Package {
-    pub name: String,
-    pub pkgver: String,
-    pub path: PathBuf,
+pub struct Package<'a> {
+    pub path: &'a PathBuf,
+    pub name: &'a str,
+    pub pkgverstr: &'a str,
+    pub pkgver: Version<'a>,
 }
 
-impl Package {
-    pub fn from_path(path: PathBuf) -> Result<Self, (PackageParseError, PathBuf)> {
-        let file_name = if let Some(file_name) = path.file_name() {
-            file_name.to_str().unwrap()
-        } else {
-            return Err((PackageParseError::EmptyPathOrRoot, path));
-        };
-
-        match extract_name_version(file_name) {
-            Ok((name, pkgver)) => Ok(Package { name, path, pkgver }),
-            Err((e, _)) => Err((e, path)),
+impl<'a> Package<'a> {
+    pub fn from_path(path: &'a PathBuf) -> Result<Self, (PackageParseError, PathBuf)> {
+        match path.file_name().map(|file_name| {
+            extract_name_version(file_name.to_str().unwrap()).map(|(n, v)| (n, v, Version::from(v)))
+        }) {
+            Some(Ok((name, pkgverstr, Some(pkgver)))) => Ok(Package {
+                name,
+                path,
+                pkgverstr,
+                pkgver,
+            }),
+            Some(Ok((_, pkgverstr, None))) => Err((
+                PackageParseError::CouldntParsePkgver(pkgverstr.to_string()),
+                path.clone(),
+            )),
+            Some(Err((e, _))) => Err((e, path.clone())),
+            None => Err((PackageParseError::EmptyPathOrRoot, path.clone())),
         }
     }
 
     pub fn compare_versions(a: &Package, b: &Package) -> Ordering {
-        match VersionCompare::compare(&a.pkgver, &b.pkgver).unwrap_or(CompOp::Ne) {
-            CompOp::Eq => {
+        match Version::compare(&a.pkgver, &b.pkgver) {
+            Cmp::Eq => {
                 // TODO: log_lvl
                 /*
                 eprintln!(
@@ -47,9 +55,9 @@ impl Package {
                 */
                 Ordering::Equal
             }
-            CompOp::Ge | CompOp::Gt => Ordering::Greater,
-            CompOp::Le | CompOp::Lt => Ordering::Less,
-            CompOp::Ne => {
+            Cmp::Ge | Cmp::Gt => Ordering::Greater,
+            Cmp::Le | Cmp::Lt => Ordering::Less,
+            Cmp::Ne => {
                 eprintln!("WWW package `{}` : versions `{}` and `{}` seems to be different, but we can't compare them.",
                     a.name,
                     a.pkgver,
@@ -59,15 +67,6 @@ impl Package {
             }
         }
     }
-    /*
-    fn parse_pkgver(pkgver: &str) -> Result<(Version, &str), String> {
-        if let Some(semver) = Version::from(pkgver) {
-            Ok((semver, ""))
-        } else {
-            Err(format!("Couldn't parse pkgver: `{}`", pkgver))
-        }
-    }
-    */
 }
 
 /// Contains a package and its possible ambiguities, the first one having the priority over the
@@ -76,10 +75,10 @@ impl Package {
 ///
 /// We use a value and an array for it to be easier to handle and might save some memory as most
 /// packages won't even fill the vec.
-pub struct Packages(Package, Vec<Package>);
+pub struct Packages<'a>(Package<'a>, Vec<Package<'a>>);
 
-impl Packages {
-    pub fn new(p: Package) -> Self {
+impl<'a> Packages<'a> {
+    pub fn new(p: Package<'a>) -> Self {
         Packages(p, Vec::with_capacity(0))
     }
 
@@ -91,11 +90,11 @@ impl Packages {
         !self.1.is_empty()
     }
 
-    pub fn add_ambiguity(&mut self, p: Package) {
+    pub fn add_ambiguity(&mut self, p: Package<'a>) {
         self.1.push(p);
     }
 
-    pub fn into_iter(self) -> impl Iterator<Item = Package> {
+    pub fn into_iter(self) -> impl Iterator<Item = Package<'a>> {
         let Packages(p, pkgs) = self;
         once(p).chain(pkgs.into_iter())
     }
@@ -109,15 +108,15 @@ impl Packages {
     */
 }
 
-impl Deref for Packages {
-    type Target = Package;
+impl<'a> Deref for Packages<'a> {
+    type Target = Package<'a>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl DerefMut for Packages {
+impl<'a> DerefMut for Packages<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
@@ -127,7 +126,7 @@ impl DerefMut for Packages {
 const PARSE_PKG_NAME_REGEX: &str = r"(.*)-([^-]+-[^-]+)-[^-]+.pkg.tar.*";
 
 #[cfg(feature = "regex")]
-fn extract_name_version(file_name: &str) -> Result<(String, String), (PackageParseError, String)> {
+fn extract_name_version(file_name: &str) -> Result<(&str, &str), (PackageParseError, String)> {
     // filename.split
     lazy_static! {
         static ref RE: Regex = Regex::new(PARSE_PKG_NAME_REGEX).expect("Bad PARSE_PKG_NAME_REGEX");
@@ -140,14 +139,15 @@ fn extract_name_version(file_name: &str) -> Result<(String, String), (PackagePar
     };
 
     // Needs to do this jump to get direct access to &str
-    let name = captures.get(1).unwrap().as_str().to_string();
-    let pkgver = captures.get(2).unwrap().as_str().to_string();
+    let name = captures.get(1).unwrap().as_str();
+    let pkgver = captures.get(2).unwrap().as_str();
 
     Ok((name, pkgver))
 }
 
 #[cfg(not(feature = "regex"))]
 fn extract_name_version(file_name: &str) -> Result<(String, String), (PackageParseError, String)> {
+    todo!("Extract name version without regex");
     // filename.split
     Ok(("a".to_string(), "b".to_string()))
 }
