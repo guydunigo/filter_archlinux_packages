@@ -23,14 +23,13 @@ impl Default for Options {
 /// How much interraction from the user is needed.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum AutoConfirmLevel {
-    /// Ask nothing (be carreful)
+    /// Ask nothing (be careful)
     Nothing,
     /// Ask only at the end before removing any files
     Removal,
-    /// Ask when there are ambiguities between two or more versions (the version library can't says they are equal)
+    /// Ask when there are ambiguities between two or more versions (the version library can't say they are equal)
     Ambiguities,
     /// Ask for every choice (in case you're not sure the version library compared successfuly)
-    /// TODO: use it
     Everything,
 }
 

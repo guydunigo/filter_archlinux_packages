@@ -74,12 +74,11 @@ pub fn remove_old_archlinux_packages(opts: Options) -> io::Result<()> {
 
 /// Returns a list of all archlinux packages in `dir` if there is a newer version
 /// also present.
-/// `dir` should be a path to an existing **directory**.
+/// `dir` should be a path to an existing **directory**, but we check that in main already.
 /// Returns : `(old_pkgs, ignored_files)` where:
 ///     - `old_pkgs` are the packages that have a newer version
 ///     - `ignored_files` are the files ignored because of ambiguous version number or non-package
 fn list_old_archlinux_packages(opts: &Options) -> io::Result<(Vec<PathBuf>, Vec<PathBuf>)> {
-    // TODO: assert dir.is_dir(), already done in read_dir ?
     let mut old_pkgs = Vec::new();
     let mut new_pkgs: HashMap<&str, Packages> = HashMap::new();
     let mut ignored_files = Vec::new();
@@ -112,24 +111,32 @@ fn list_old_archlinux_packages(opts: &Options) -> io::Result<(Vec<PathBuf>, Vec<
 
         if let Some(existing_pkg) = new_pkgs.get_mut(&pkg.name) {
             if pkg.path == existing_pkg.path {
-                continue;
+                panic!("Cannot see the same path twice !");
             }
 
             match Package::compare_versions(&pkg, existing_pkg) {
+                // The new one is greater than the already found one.
                 Ordering::Greater => {
+                    // TODO: not necessarily and correct values ?
                     if DEBUG_VERSIONS_COMPARISON {
                         eprintln!(
-                            "=====> Keeping ver `{}` over `{}`.",
+                            "=====> Keeping ver. `{}` over `{}`.",
                             pkg.pkgver, existing_pkg.pkgver
                         );
                     }
 
-                    // TODO: ideally add them back to this loop as long as there are any for better
-                    // handling
+                    // Switching places (and ownership) of two packages.
                     let existing_pkg = new_pkgs.insert(pkg.name, Packages::new(pkg)).unwrap();
                     let pkg = new_pkgs.get_mut(&existing_pkg.name).unwrap();
+
+                    // We check if we are Greater than all ambiguities as well.
+                    // TODO: ideally add them back to this loop as long as there are any for better
+                    // handling
                     for p in existing_pkg.into_iter() {
                         match Package::compare_versions(&p, pkg) {
+                            Ordering::Less if opts.auto_confirm_level.is_everything() => {
+                                pkg.add_ambiguity(p)
+                            }
                             Ordering::Less => old_pkgs.push(p.path.clone()),
                             Ordering::Greater => {
                                 eprintln!("WWW Ambiguous package from older version is seen with greater version than the newer one has.");
@@ -138,6 +145,9 @@ fn list_old_archlinux_packages(opts: &Options) -> io::Result<(Vec<PathBuf>, Vec<
                             Ordering::Equal => pkg.add_ambiguity(p),
                         }
                     }
+                }
+                Ordering::Less if opts.auto_confirm_level.is_everything() => {
+                    existing_pkg.add_ambiguity(pkg)
                 }
                 Ordering::Less => {
                     if DEBUG_VERSIONS_COMPARISON {
@@ -157,7 +167,13 @@ fn list_old_archlinux_packages(opts: &Options) -> io::Result<(Vec<PathBuf>, Vec<
 
     let mut single_new_pkgs = Vec::with_capacity(new_pkgs.len());
     println!("\n------------");
-    println!("Handling ambiguous versions...\n");
+    if opts.auto_confirm_level.is_everything() {
+        println!(
+            "Given the auto-confirm level set to everything, we're asking for every package...\n"
+        );
+    } else {
+        println!("Handling ambiguous versions...\n");
+    }
     for p in new_pkgs.into_values() {
         if !p.has_ambs() {
             single_new_pkgs.push(p.into_iter().next().unwrap());
@@ -165,7 +181,16 @@ fn list_old_archlinux_packages(opts: &Options) -> io::Result<(Vec<PathBuf>, Vec<
             let name = p.get_name().to_string();
             let mut ambs: Vec<_> = p.into_iter().collect();
             // index 0 should always exist
-            println!("package `{}` has {} ambiguities :", name, ambs.len());
+            println!(
+                "Package `{}` has {} {} :",
+                name,
+                ambs.len(),
+                if opts.auto_confirm_level.is_everything() {
+                    "versions"
+                } else {
+                    "ambiguities"
+                }
+            );
             // We get the "biggest" string on top.
             ambs.sort_by(|a, b| b.pkgverstr.cmp(&a.pkgverstr));
             ambs.iter().enumerate().rev().for_each(|(i, p)| {

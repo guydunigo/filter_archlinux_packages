@@ -94,6 +94,7 @@ impl<'a> Packages<'a> {
         self.1.push(p);
     }
 
+    /// Iterate over the current package and its ambiguities.
     pub fn into_iter(self) -> impl Iterator<Item = Package<'a>> {
         let Packages(p, pkgs) = self;
         once(p).chain(pkgs.into_iter())
