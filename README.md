@@ -18,15 +18,24 @@ Apparently pacman 6 now downloads sig files along with the packages, support for
 ## Usage
 
 ```shell
-remove_old_pkgs [pkgs_directory]
+remove_old_pkgs [-hd0123] [pkgs_directory]
 ```
 
-If no `pkgs_directory` is provided, the program will looking into the current directory.
+If no `pkgs_directory` is provided, the program will look into the current directory.
 `pkgs_directory` will most likely `/var/cache/pacman/pkg` or a copy of it.
 
 **WARNING** : you might need to run this command as root if you run it directly in `/var/cache/pacman/pkg`.
 
+- `-h` : help message
+- `-d` : dry run, doesn't delete anything or change any file
+- `-0..3` : auto-confirm/interractivity levels, the higher the number, the more we ask
+    - `-0` : Doesn't ask anything and selects the default version in case of ambiguities
+    - `-1` : Ask only before removing anything
+    - `-2` : Ask when there are ambiguities regarding versions and before removing anything.
+    - `-3` : Ask for every decision for every version comparison (even if we can clearly determine the latest one by ourselves)
+
 ## Exit codes
 
-- `1` : argument is not a directory
-- `2` : input-output error (not read or write right on the directory for instance)
+- `1` : unknown command-line option (or directory name starting with '-')
+- `2` : argument is not a directory
+- `3` : input-output error (not read or write right on the directory for instance)

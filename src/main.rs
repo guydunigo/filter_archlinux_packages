@@ -16,7 +16,10 @@ fn main() {
 
     for arg in args().skip(1) {
         match &arg[..] {
-            "-h" => println!("Help"),
+            "-h" => {
+                println!(include_str!("../README.md"));
+                return;
+            }
             "-d" => opts.dry_run = true,
             "-0" => opts.auto_confirm_level = AutoConfirmLevel::Nothing,
             "-1" => opts.auto_confirm_level = AutoConfirmLevel::Removal,
