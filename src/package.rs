@@ -47,12 +47,10 @@ impl<'a> Package<'a> {
         match Version::compare(&a.pkgver, &b.pkgver) {
             Cmp::Eq => {
                 // TODO: log_lvl
-                /*
                 eprintln!(
                     "WWW package `{}` : versions `{}` and `{}` seems to be the same.",
                     a.name, a.pkgver, b.pkgver
                 );
-                */
                 Ordering::Equal
             }
             Cmp::Ge | Cmp::Gt => Ordering::Greater,
@@ -123,9 +121,18 @@ impl<'a> DerefMut for Packages<'a> {
     }
 }
 
+/// `{name}-{soft_version-pkg_version}-{arch}.pkg.tar.{compress_algo}`
 #[cfg(feature = "regex")]
 const PARSE_PKG_NAME_REGEX: &str = r"(.*)-([^-]+-[^-]+)-[^-]+.pkg.tar.*";
 
+/// Returns (name, pkgver) based on the provided file_name.
+///
+/// Example :
+/// ```
+/// // TODO: can't run because private...
+/// // use remove_old_arch_pkgs::package::extract_name_version;
+/// // assert_eq!(extract_name_version("acpi-1.7-3-x86_64.pkg.tar.zst"), Ok(("acpi", "1.7-3")))
+/// ```
 #[cfg(feature = "regex")]
 fn extract_name_version(file_name: &str) -> Result<(&str, &str), (PackageParseError, String)> {
     // filename.split
@@ -147,8 +154,8 @@ fn extract_name_version(file_name: &str) -> Result<(&str, &str), (PackageParseEr
 }
 
 #[cfg(not(feature = "regex"))]
-fn extract_name_version(file_name: &str) -> Result<(String, String), (PackageParseError, String)> {
+fn extract_name_version(file_name: &str) -> Result<(&str, &str), (PackageParseError, String)> {
     todo!("Extract name version without regex");
     // filename.split
-    Ok(("a".to_string(), "b".to_string()))
+    // Ok(("a".to_string(), "b".to_string()))
 }

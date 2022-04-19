@@ -44,7 +44,7 @@ pub fn remove_old_archlinux_packages(opts: Options) -> io::Result<()> {
             println!("Are you agreeing to these removals ? Type `y` and press enter if you do.");
             let mut input = String::new();
             if let Err(err) = io::stdin().read_line(&mut input) {
-                // TODO: not panic ?
+                // TODO: not panic ? proper error about unavailable stdin...
                 panic!(
                     "EEE Can't read from input to ask anything to the user: {}",
                     err
@@ -117,7 +117,6 @@ fn list_old_archlinux_packages(opts: &Options) -> io::Result<(Vec<PathBuf>, Vec<
             match Package::compare_versions(&pkg, existing_pkg) {
                 // The new one is greater than the already found one.
                 Ordering::Greater => {
-                    // TODO: not necessarily and correct values ?
                     if DEBUG_VERSIONS_COMPARISON {
                         eprintln!(
                             "=====> Keeping ver. `{}` over `{}`.",
@@ -205,11 +204,6 @@ fn list_old_archlinux_packages(opts: &Options) -> io::Result<(Vec<PathBuf>, Vec<
             });
 
             let number_opt = if !opts.auto_confirm_level.is_at_least_ambiguities() {
-                // TODO: also the possibility to select all 0
-                /*
-                println!("> selecting index 0");
-                Some(0)
-                */
                 println!("> keeping all");
                 None
             } else {
@@ -259,7 +253,8 @@ fn list_old_archlinux_packages(opts: &Options) -> io::Result<(Vec<PathBuf>, Vec<
                     }
                 });
             } else {
-                // TODO clone ?
+                // TODO remove clone : require carrying a ref to the owner or something
+                // to move it...
                 ignored_files.extend(ambs.drain(..).map(|p| p.path.clone()));
             }
         }
