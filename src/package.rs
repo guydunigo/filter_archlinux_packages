@@ -81,7 +81,7 @@ impl<'a> Packages<'a> {
     }
 
     pub fn get_name(&self) -> &str {
-        &self.0.name[..]
+        self.0.name
     }
 
     pub fn has_ambs(&self) -> bool {
@@ -155,7 +155,31 @@ fn extract_name_version(file_name: &str) -> Result<(&str, &str), (PackageParseEr
 
 #[cfg(not(feature = "regex"))]
 fn extract_name_version(file_name: &str) -> Result<(&str, &str), (PackageParseError, String)> {
-    todo!("Extract name version without regex");
-    // filename.split
-    // Ok(("a".to_string(), "b".to_string()))
+    if file_name.split('-').count() <= 3 {
+        return Err((PackageParseError::NoPackageName, file_name.to_string()));
+    }
+
+    let mut f_iter = file_name.split('-');
+    let name = f_iter.next().unwrap();
+    // TODO : better way to extract slice to file_name without allocating new vec/string ?
+    let name_len = name.len();
+    let pkgver_0_len = f_iter.next().unwrap().len();
+    let pkgver_1_len = f_iter.next().unwrap().len();
+    let pkgver = &file_name[(name_len + 1)..(name_len + pkgver_0_len + pkgver_1_len + 2)];
+
+    // Checking extension in `.pkg.tar.{algo}` :
+    let rest = f_iter.next().unwrap();
+    if rest.split('.').count() != 4 {
+        return Err((PackageParseError::NoPackageName, file_name.to_string()));
+    }
+    let mut rest_iter = rest.split('.').skip(1);
+    // let _arch = rest_iter_iter.next().unwrap();
+    let pkg = rest_iter.next().unwrap();
+    let tar = rest_iter.next().unwrap();
+    if !(pkg == "pkg" && tar == "tar") {
+        return Err((PackageParseError::NoPackageName, file_name.to_string()));
+    }
+    // let _algo = f_iter.next().unwrap();
+
+    Ok((name, pkgver))
 }
