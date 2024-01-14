@@ -95,7 +95,7 @@ impl<'a> Packages<'a> {
     /// Iterate over the current package and its ambiguities.
     pub fn into_iter(self) -> impl Iterator<Item = Package<'a>> {
         let Packages(p, pkgs) = self;
-        once(p).chain(pkgs.into_iter())
+        once(p).chain(pkgs)
     }
 
     /*
@@ -136,6 +136,7 @@ const PARSE_PKG_NAME_REGEX: &str = r"(.*)-([^-]+-[^-]+)-[^-]+.pkg.tar.*";
 #[cfg(feature = "regex")]
 fn extract_name_version(file_name: &str) -> Result<(&str, &str), (PackageParseError, String)> {
     // filename.split
+    // TODO: const fn ?
     lazy_static! {
         static ref RE: Regex = Regex::new(PARSE_PKG_NAME_REGEX).expect("Bad PARSE_PKG_NAME_REGEX");
     }

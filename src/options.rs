@@ -21,13 +21,14 @@ impl Default for Options {
 }
 
 /// How much interraction from the user is needed.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub enum AutoConfirmLevel {
     /// Ask nothing (be careful)
     Nothing,
     /// Ask only at the end before removing any files
     Removal,
     /// Ask when there are ambiguities between two or more versions (the version library can't say they are equal)
+    #[default]
     Ambiguities,
     /// Ask for every choice (in case you're not sure the version library compared successfuly)
     Everything,
@@ -48,12 +49,6 @@ impl AutoConfirmLevel {
 
     pub fn is_everything(&self) -> bool {
         *self == AutoConfirmLevel::Everything
-    }
-}
-
-impl Default for AutoConfirmLevel {
-    fn default() -> Self {
-        AutoConfirmLevel::Ambiguities
     }
 }
 

@@ -32,14 +32,10 @@ const _TEST_NAME_3: &str = "/mnt/archlinux/zeitgeist-1.0+1+g1bcc8585-1-x86_64.pk
 pub fn remove_old_archlinux_packages(opts: Options) -> io::Result<()> {
     let (old_pkgs, ignored_files) = list_old_archlinux_packages(&opts)?;
 
-    if opts.dry_run {
         list_removed_files(&old_pkgs);
         list_ignored_files(&ignored_files);
-    } else {
-        let input = if opts.auto_confirm_level.is_at_least_removal() {
-            list_removed_files(&old_pkgs);
-            list_ignored_files(&ignored_files);
-
+    if !opts.dry_run {
+        let input = if opts.auto_confirm_level.is_at_least_removal() && !old_pkgs.is_empty() {
             println!("\n------------");
             println!("Are you agreeing to these removals ? Type `y` and press enter if you do.");
             let mut input = String::new();
@@ -101,9 +97,10 @@ fn list_old_archlinux_packages(opts: &Options) -> io::Result<(Vec<PathBuf>, Vec<
             continue;
         }
 
-        let pkg = match Package::from_path(&entry_path) {
+        let pkg = match Package::from_path(entry_path) {
             Ok(pkg) => pkg,
-            Err((_, entry_path)) => {
+            Err((e, entry_path)) => {
+                println!("{} {:?}", entry_path.display(), e);
                 ignored_files.push(entry_path);
                 continue;
             }
@@ -191,12 +188,13 @@ fn list_old_archlinux_packages(opts: &Options) -> io::Result<(Vec<PathBuf>, Vec<
                 }
             );
             // We get the "biggest" string on top.
-            ambs.sort_by(|a, b| b.pkgverstr.cmp(&a.pkgverstr));
+            // TODO: si chrono, comparer dates versions
+            ambs.sort_by(|a, b| b.pkgverstr.cmp(a.pkgverstr));
             ambs.iter().enumerate().rev().for_each(|(i, p)| {
                 #[cfg(feature = "chrono")]
                 {
                     let date: chrono::DateTime<chrono::Local> =
-                        chrono::DateTime::from(metadata(&p.path).unwrap().created().unwrap());
+                        chrono::DateTime::from(metadata(p.path).unwrap().created().unwrap());
                     println!("{:2}.\t{}\t(created {})", i, p.pkgver, date.to_rfc2822())
                 }
                 #[cfg(not(feature = "chrono"))]
