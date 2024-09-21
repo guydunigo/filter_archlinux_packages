@@ -4,8 +4,6 @@ use std::iter::{once, Iterator};
 use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 
-#[cfg(feature = "regex")]
-use regex::Regex;
 use version_compare::{Cmp, Version};
 
 #[derive(Debug)]
@@ -135,11 +133,12 @@ const PARSE_PKG_NAME_REGEX: &str = r"(.*)-([^-]+-[^-]+)-[^-]+.pkg.tar.*";
 /// ```
 #[cfg(feature = "regex")]
 fn extract_name_version(file_name: &str) -> Result<(&str, &str), (PackageParseError, String)> {
+    use regex::Regex;
+    use std::sync::LazyLock;
+
     // filename.split
-    // TODO: const fn ?
-    lazy_static! {
-        static ref RE: Regex = Regex::new(PARSE_PKG_NAME_REGEX).expect("Bad PARSE_PKG_NAME_REGEX");
-    }
+    static RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(PARSE_PKG_NAME_REGEX).expect("Bad PARSE_PKG_NAME_REGEX"));
 
     let captures = if let Some(captures) = RE.captures(file_name) {
         captures

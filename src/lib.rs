@@ -1,11 +1,8 @@
+#[cfg(feature = "chrono")]
+extern crate chrono;
 #[cfg(feature = "regex")]
 extern crate regex;
 extern crate version_compare;
-#[macro_use]
-#[cfg(feature = "lazy_static")]
-extern crate lazy_static;
-#[cfg(feature = "chrono")]
-extern crate chrono;
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -32,8 +29,8 @@ const _TEST_NAME_3: &str = "/mnt/archlinux/zeitgeist-1.0+1+g1bcc8585-1-x86_64.pk
 pub fn remove_old_archlinux_packages(opts: Options) -> io::Result<()> {
     let (old_pkgs, ignored_files) = list_old_archlinux_packages(&opts)?;
 
-        list_removed_files(&old_pkgs);
-        list_ignored_files(&ignored_files);
+    list_removed_files(&old_pkgs);
+    list_ignored_files(&ignored_files);
     if !opts.dry_run {
         let input = if opts.auto_confirm_level.is_at_least_removal() && !old_pkgs.is_empty() {
             println!("\n------------");
